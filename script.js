@@ -155,12 +155,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // ResolveAt (i64 LE)
                 const resolveAtBN = new BN(resolveAt);
-                const resolveAtBuffer = resolveAtBN.toArrayLike(Buffer, 'le', 8);
+                const resolveAtBuffer = new Uint8Array(resolveAtBN.toArray('le', 8));
                 data.set(resolveAtBuffer, offset);
                 offset += 8;
 
                 // Initial Liquidity (u64 LE)
-                const liquidityBuffer = liquidity.toArrayLike(Buffer, 'le', 8);
+                const liquidityBuffer = new Uint8Array(liquidity.toArray('le', 8));
                 data.set(liquidityBuffer, offset);
                 offset += 8;
 
