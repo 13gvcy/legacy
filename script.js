@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     {
                         memcmp: {
                             offset: 0,
-                            bytes: "FkXb82e6v7p" // discriminator for "account:Market" (db1f8438d6160872)
+                            bytes: "6Lh5fK82K6H7j" // discriminator for "account:Market" (db1f8438d6160872)
                         }
                     }
                 ]
