@@ -149,23 +149,120 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Render Markets (Placeholder for Fetch) ---
-    // In the next step, we would fetch these from the chain.
-    const markets = [
-        { question: "Will Bitcoin hit $100k by EOY 2025?", volume: "$1.2M", yes: 0.65, no: 0.35 },
-        { question: "Will Ethereum flip Bitcoin in 2026?", volume: "$850k", yes: 0.12, no: 0.88 },
-    ];
+    // --- Borsh Schema Definition ---
+    class MarketAccount {
+        constructor(properties) {
+            Object.assign(this, properties);
+        }
+    }
 
-    if (marketGrid) {
-        markets.forEach(m => {
+    const marketSchema = new Map([
+        [MarketAccount, {
+            kind: 'struct',
+            fields: [
+                ['creator', [32]], // PublicKey is 32 bytes
+                ['question', 'string'],
+                ['baseMint', [32]],
+                ['yesPoolAmount', 'u64'],
+                ['noPoolAmount', 'u64'],
+                ['totalYesShares', 'u64'],
+                ['totalNoShares', 'u64'],
+                ['status', 'u8'], // Enum is usually 1 byte
+                ['createdAt', 'i64'],
+                ['resolveAt', 'i64'],
+                ['resolver', [32]],
+                ['feePaid', 'u8'] // bool is u8
+            ]
+        }]
+    ]);
+
+    // --- Fetch and Render Markets ---
+    const fetchMarkets = async () => {
+        if (!connection || !marketGrid) return;
+
+        try {
+            // Clear hardcoded/loading state
+            marketGrid.innerHTML = '<div class="loading-spinner">Loading Markets from Solana...</div>';
+
+            const accounts = await connection.getProgramAccounts(new solanaWeb3.PublicKey(PROGRAM_ID), {
+                filters: [
+                    { dataSize: 8 + 32 + 4 + 100 + 32 + 8 + 8 + 8 + 8 + 1 + 8 + 8 + 32 + 1 } // Approximate size filter if needed, or just fetch all
+                    // Better to just fetch all for now as size varies with string length
+                ]
+            });
+
+            // Filter for Market accounts (check discriminator if strictly needed, but for now assume all are markets)
+            // Anchor discriminator for "Market" is sha256("account:Market")[..8]
+            // For simplicity in this MVP, we'll try to decode everything.
+
+            const decodedMarkets = [];
+
+            for (const { pubkey, account } of accounts) {
+                try {
+                    // Skip 8 byte discriminator
+                    const data = account.data.slice(8);
+
+                    // Deserialize
+                    const market = borsh.deserialize(marketSchema, MarketAccount, data);
+
+                    // Calculate Prices
+                    const yesPool = new BN(market.yesPoolAmount, 'le'); // Borsh uses BN.js or similar usually, but here we might get raw bytes/arrays depending on library version
+                    // Simple approximation for MVP if numbers are small, else need BN library
+                    // Let's assume simple numbers for the demo or use a helper
+
+                    // Note: 'u64' in borsh-js usually returns a BN (BigNum) instance or similar.
+                    // We'll convert to string/number for display.
+
+                    const yes = parseInt(market.yesPoolAmount.toString());
+                    const no = parseInt(market.noPoolAmount.toString());
+                    const total = yes + no;
+
+                    let yesPrice = 0.5;
+                    if (total > 0) {
+                        yesPrice = yes / total;
+                    }
+
+                    decodedMarkets.push({
+                        id: pubkey.toString(),
+                        question: market.question,
+                        volume: "Wait...", // Need to fetch token balances for real volume
+                        yesPrice: yesPrice.toFixed(2),
+                        noPrice: (1 - yesPrice).toFixed(2)
+                    });
+
+                } catch (e) {
+                    console.log("Failed to decode account:", pubkey.toString(), e);
+                }
+            }
+
+            renderMarkets(decodedMarkets);
+
+        } catch (err) {
+            console.error("Error fetching markets:", err);
+            marketGrid.innerHTML = '<div class="error">Failed to load markets. Ensure you are on Devnet.</div>';
+        }
+    };
+
+    const renderMarkets = (data) => {
+        marketGrid.innerHTML = '';
+
+        if (data.length === 0) {
+            marketGrid.innerHTML = '<div class="no-markets">No markets found. Create one!</div>';
+            return;
+        }
+
+        data.forEach(m => {
             const card = document.createElement('div');
             card.className = 'market-card';
             card.innerHTML = `
                 <div class="market-question">${m.question}</div>
-                <div class="market-stats"><span>Vol: ${m.volume}</span><span>Chance: ${Math.round(m.yes * 100)}%</span></div>
-                <div class="market-actions"><button class="btn btn-yes">YES ${m.yes}</button><button class="btn btn-no">NO ${m.no}</button></div>
+                <div class="market-stats"><span>Vol: ${m.volume}</span><span>Chance: ${Math.round(m.yesPrice * 100)}%</span></div>
+                <div class="market-actions"><button class="btn btn-yes">YES ${m.yesPrice}</button><button class="btn btn-no">NO ${m.noPrice}</button></div>
             `;
             marketGrid.appendChild(card);
         });
-    }
+    };
+
+    // Initial Load
+    fetchMarkets();
 });
