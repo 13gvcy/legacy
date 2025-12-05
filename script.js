@@ -96,48 +96,110 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const question = document.getElementById('question').value;
+            const liquidityInput = document.getElementById('liquidity').value;
             const btn = createForm.querySelector('button[type="submit"]');
             const originalText = btn.innerText;
 
             try {
-                btn.innerText = "APPROVE IN WALLET...";
+                btn.innerText = "BUILDING TX...";
                 btn.disabled = true;
 
-                // 1. Setup Keys
+                // --- Constants ---
+                const BASE_MINT = new solanaWeb3.PublicKey("CSXXfV4qSUJRCbYnk21Wm6mPDZUvYN2aWUjAaxoeViTS");
+                const TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+                const ASSOCIATED_TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+                const SYSVAR_RENT_PUBKEY = new solanaWeb3.PublicKey("SysvarRent111111111111111111111111111111111");
+
+                // --- 1. Setup Keys ---
                 const creatorKey = new solanaWeb3.PublicKey(walletAddress);
                 const marketKeypair = solanaWeb3.Keypair.generate(); // New address for the market
                 const programId = new solanaWeb3.PublicKey(PROGRAM_ID);
 
-                // 2. Construct Transaction (Simplified for MVP - Raw Instruction)
-                // Note: In a full app, we'd use Anchor's JS library to encode this easily.
-                // For this MVP without a build step, we are manually constructing the instruction data
-                // or using a placeholder to show the flow. 
-
-                // For this specific step, to avoid complex JS serialization without a bundler,
-                // we will simulate the *network request* but trigger a real SOL transfer 
-                // to prove connectivity.
-
-                const transaction = new solanaWeb3.Transaction().add(
-                    solanaWeb3.SystemProgram.transfer({
-                        fromPubkey: creatorKey,
-                        toPubkey: marketKeypair.publicKey, // "Funding" the market
-                        lamports: 0.01 * solanaWeb3.LAMPORTS_PER_SOL, // Small fee
-                    })
+                // Derive Escrow PDA: ['escrow', market_pubkey]
+                const [escrowTokenAccount] = await solanaWeb3.PublicKey.findProgramAddress(
+                    [new TextEncoder().encode("escrow"), marketKeypair.publicKey.toBuffer()],
+                    programId
                 );
 
+                // Derive Creator's Associated Token Account (ATA) for the Base Mint
+                const [creatorTokenAccount] = await solanaWeb3.PublicKey.findProgramAddress(
+                    [creatorKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), BASE_MINT.toBuffer()],
+                    ASSOCIATED_TOKEN_PROGRAM_ID
+                );
+
+                // --- 2. Serialize Instruction Data ---
+                // Layout: Discriminator (8) + Question (4+len) + ResolveAt (8) + InitialLiquidity (8)
+
+                const discriminatorHex = "906c24fd0042c687";
+                const discriminator = new Uint8Array(discriminatorHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+
+                const questionBytes = new TextEncoder().encode(question);
+                const resolveAt = Math.floor(Date.now() / 1000) + 604800; // 7 days from now
+                const liquidity = new BN(liquidityInput).mul(new BN(1000000)); // Assume 6 decimals for fake USDC
+
+                // Build Buffer
+                const bufferSize = 8 + 4 + questionBytes.length + 8 + 8;
+                const data = new Uint8Array(bufferSize);
+                let offset = 0;
+
+                // Discriminator
+                data.set(discriminator, offset);
+                offset += 8;
+
+                // Question String (Borsh: u32 len + bytes)
+                // We need to write u32 LE
+                new DataView(data.buffer).setUint32(offset, questionBytes.length, true);
+                offset += 4;
+                data.set(questionBytes, offset);
+                offset += questionBytes.length;
+
+                // ResolveAt (i64 LE)
+                const resolveAtBN = new BN(resolveAt);
+                const resolveAtBuffer = resolveAtBN.toArrayLike(Buffer, 'le', 8);
+                data.set(resolveAtBuffer, offset);
+                offset += 8;
+
+                // Initial Liquidity (u64 LE)
+                const liquidityBuffer = liquidity.toArrayLike(Buffer, 'le', 8);
+                data.set(liquidityBuffer, offset);
+                offset += 8;
+
+                // --- 3. Build Instruction ---
+                const instruction = new solanaWeb3.TransactionInstruction({
+                    keys: [
+                        { pubkey: marketKeypair.publicKey, isSigner: true, isWritable: true }, // market
+                        { pubkey: creatorKey, isSigner: true, isWritable: true }, // creator
+                        { pubkey: BASE_MINT, isSigner: false, isWritable: false }, // base_mint
+                        { pubkey: creatorTokenAccount, isSigner: false, isWritable: true }, // creator_token_account
+                        { pubkey: escrowTokenAccount, isSigner: false, isWritable: true }, // escrow_token_account
+                        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program
+                        { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
+                        { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false } // rent
+                    ],
+                    programId: programId,
+                    data: data
+                });
+
+                // --- 4. Send Transaction ---
+                const transaction = new solanaWeb3.Transaction().add(instruction);
                 transaction.feePayer = creatorKey;
+
                 const { blockhash } = await connection.getLatestBlockhash();
                 transaction.recentBlockhash = blockhash;
 
-                // 3. Sign and Send
+                // Sign with Wallet AND Market Keypair
+                transaction.partialSign(marketKeypair);
+
                 const { solana } = window;
                 const signed = await solana.signTransaction(transaction);
+
+                btn.innerText = "SENDING...";
                 const signature = await connection.sendRawTransaction(signed.serialize());
 
                 btn.innerText = "CONFIRMING...";
                 await connection.confirmTransaction(signature);
 
-                alert(`SUCCESS! Transaction Confirmed.\nSignature: ${signature.slice(0, 8)}...`);
+                alert(`MARKET CREATED! \nSignature: ${signature.slice(0, 8)}...`);
                 window.location.href = "index.html";
 
             } catch (err) {
