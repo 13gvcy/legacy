@@ -184,16 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Clear hardcoded/loading state
             marketGrid.innerHTML = '<div class="loading-spinner">Loading Markets from Solana...</div>';
 
-            const accounts = await connection.getProgramAccounts(new solanaWeb3.PublicKey(PROGRAM_ID), {
-                filters: [
-                    {
-                        memcmp: {
-                            offset: 0,
-                            bytes: "6Lh5fK82K6H7j" // discriminator for "account:Market" (db1f8438d6160872)
-                        }
-                    }
-                ]
-            });
+            const accounts = await connection.getProgramAccounts(new solanaWeb3.PublicKey(PROGRAM_ID));
 
             // Filter for Market accounts (check discriminator if strictly needed, but for now assume all are markets)
             // Anchor discriminator for "Market" is sha256("account:Market")[..8]
