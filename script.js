@@ -246,7 +246,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Clear hardcoded/loading state
             marketGrid.innerHTML = '<div class="loading-spinner">Loading Markets from Solana...</div>';
 
+            console.log("Fetching accounts for program:", PROGRAM_ID);
             const accounts = await connection.getProgramAccounts(new solanaWeb3.PublicKey(PROGRAM_ID));
+            console.log("Found accounts:", accounts.length);
 
             // Filter for Market accounts (check discriminator if strictly needed, but for now assume all are markets)
             // Anchor discriminator for "Market" is sha256("account:Market")[..8]
@@ -256,11 +258,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             for (const { pubkey, account } of accounts) {
                 try {
+                    console.log("Processing account:", pubkey.toString(), "Data len:", account.data.length);
                     // Skip 8 byte discriminator
                     const data = account.data.slice(8);
 
                     // Deserialize
                     const market = borsh.deserialize(marketSchema, MarketAccount, data);
+                    console.log("Decoded market:", market);
 
                     // Calculate Prices
                     const yesPool = new BN(market.yesPoolAmount, 'le'); // Borsh uses BN.js or similar usually, but here we might get raw bytes/arrays depending on library version
@@ -292,6 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
+            console.log("Final decoded markets:", decodedMarkets);
             renderMarkets(decodedMarkets);
 
         } catch (err) {
