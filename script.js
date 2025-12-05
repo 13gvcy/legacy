@@ -186,8 +186,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const accounts = await connection.getProgramAccounts(new solanaWeb3.PublicKey(PROGRAM_ID), {
                 filters: [
-                    { dataSize: 8 + 32 + 4 + 100 + 32 + 8 + 8 + 8 + 8 + 1 + 8 + 8 + 32 + 1 } // Approximate size filter if needed, or just fetch all
-                    // Better to just fetch all for now as size varies with string length
+                    {
+                        memcmp: {
+                            offset: 0,
+                            bytes: solanaWeb3.bs58.encode(new Uint8Array([0xdb, 0x1f, 0x84, 0x38, 0xd6, 0x16, 0x08, 0x72])) // discriminator for "account:Market"
+                        }
+                    }
                 ]
             });
 
