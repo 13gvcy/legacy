@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // --- 2. Serialize Instruction Data ---
                 // Layout: Discriminator (8) + Question (4+len) + ResolveAt (8) + InitialLiquidity (8)
 
-                const discriminatorHex = "906c24fd0042c687";
+                const discriminatorHex = "67e261ebc8bcfbfe";
                 const discriminator = new Uint8Array(discriminatorHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
 
                 const questionBytes = new TextEncoder().encode(question);
