@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     {
                         memcmp: {
                             offset: 0,
-                            bytes: bs58.encode(new Uint8Array([0xdb, 0x1f, 0x84, 0x38, 0xd6, 0x16, 0x08, 0x72])) // discriminator for "account:Market"
+                            bytes: "FkXb82e6v7p" // discriminator for "account:Market" (db1f8438d6160872)
                         }
                     }
                 ]
