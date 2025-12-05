@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     {
                         memcmp: {
                             offset: 0,
-                            bytes: solanaWeb3.bs58.encode(new Uint8Array([0xdb, 0x1f, 0x84, 0x38, 0xd6, 0x16, 0x08, 0x72])) // discriminator for "account:Market"
+                            bytes: bs58.encode(new Uint8Array([0xdb, 0x1f, 0x84, 0x38, 0xd6, 0x16, 0x08, 0x72])) // discriminator for "account:Market"
                         }
                     }
                 ]
@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (err) {
             console.error("Error fetching markets:", err);
-            marketGrid.innerHTML = '<div class="error">Failed to load markets. Ensure you are on Devnet.</div>';
+            marketGrid.innerHTML = `<div class="error">Failed to load markets: ${err.message}</div>`;
         }
     };
 
