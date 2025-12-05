@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const questionBytes = new TextEncoder().encode(question);
                 const resolveAt = Math.floor(Date.now() / 1000) + 604800; // 7 days from now
-                const liquidity = new BN(liquidityInput).mul(new BN(1000000)); // Assume 6 decimals for fake USDC
+                const liquidity = new BN(liquidityInput).mul(new BN(1000000000)); // 9 decimals for SPL Token
 
                 // Build Buffer
                 const bufferSize = 8 + 4 + questionBytes.length + 8 + 8;
