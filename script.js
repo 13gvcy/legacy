@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const questionBytes = new TextEncoder().encode(question);
                 const resolveAt = Math.floor(Date.now() / 1000) + 604800; // 7 days from now
-                const liquidity = new solanaWeb3.BN(liquidityInput).mul(new solanaWeb3.BN(1000000)); // Assume 6 decimals for fake USDC
+                const liquidity = new BN(liquidityInput).mul(new BN(1000000)); // Assume 6 decimals for fake USDC
 
                 // Build Buffer
                 const bufferSize = 8 + 4 + questionBytes.length + 8 + 8;
@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 offset += questionBytes.length;
 
                 // ResolveAt (i64 LE)
-                const resolveAtBN = new solanaWeb3.BN(resolveAt);
+                const resolveAtBN = new BN(resolveAt);
                 const resolveAtBuffer = resolveAtBN.toArrayLike(Buffer, 'le', 8);
                 data.set(resolveAtBuffer, offset);
                 offset += 8;
@@ -263,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const market = borsh.deserialize(marketSchema, MarketAccount, data);
 
                     // Calculate Prices
-                    const yesPool = new solanaWeb3.BN(market.yesPoolAmount, 'le'); // Borsh uses BN.js or similar usually, but here we might get raw bytes/arrays depending on library version
+                    const yesPool = new BN(market.yesPoolAmount, 'le'); // Borsh uses BN.js or similar usually, but here we might get raw bytes/arrays depending on library version
                     // Simple approximation for MVP if numbers are small, else need BN library
                     // Let's assume simple numbers for the demo or use a helper
 
