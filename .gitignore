@@ -1,0 +1,4 @@
+node_modules/
+solana-release/
+*.log
+.DS_Store
