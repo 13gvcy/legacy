@@ -354,6 +354,96 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // --- Single Market Logic (market.html) ---
+    const loadSingleMarket = async () => {
+        const params = new URLSearchParams(window.location.search);
+        const marketId = params.get('id');
+        const container = document.getElementById('market-detail-container');
+
+        if (!marketId || !container) return;
+
+        if (!connection) return;
+
+        try {
+            console.log("Fetching single market:", marketId);
+            const pubkey = new solanaWeb3.PublicKey(marketId);
+            const accountInfo = await connection.getAccountInfo(pubkey);
+
+            if (!accountInfo) {
+                container.innerHTML = '<div class="error">Market not found on chain.</div>';
+                return;
+            }
+
+            const m = decodeMarket(accountInfo.data);
+            if (!m) {
+                container.innerHTML = '<div class="error">Failed to decode market data.</div>';
+                return;
+            }
+
+            // Calculations
+            const yesPool = m.yesPoolAmount.toNumber();
+            const noPool = m.noPoolAmount.toNumber();
+            const total = yesPool + noPool;
+            let yesPrice = 0.5;
+            if (total > 0) yesPrice = yesPool / total;
+            const volumeInTokens = (total / 1e9).toFixed(2);
+            const yesTokens = (yesPool / 1e9).toFixed(2);
+            const noTokens = (noPool / 1e9).toFixed(2);
+            const createdDate = new Date(m.createdAt * 1000).toLocaleString();
+
+            // Status
+            let statusBadge = '<span style="color: #888; border: 1px solid #444; padding: 2px 6px; border-radius: 4px;">OPEN</span>';
+            if (m.status === 1) statusBadge = '<span style="color: var(--color-primary); border: 1px solid var(--color-primary); padding: 2px 6px; border-radius: 4px;">RESOLVED: YES</span>';
+            if (m.status === 2) statusBadge = '<span style="color: var(--color-accent); border: 1px solid var(--color-accent); padding: 2px 6px; border-radius: 4px;">RESOLVED: NO</span>';
+
+            container.innerHTML = `
+                <div style="background: var(--color-surface); border: 1px solid rgba(255,255,255,0.1); padding: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem;">
+                        <div>
+                            <div style="color: var(--color-text-dim); font-size: 0.9rem; margin-bottom: 0.5rem;">Created ${createdDate}</div>
+                            <h1 style="font-size: 2rem; margin-bottom: 1rem; line-height: 1.2;">${m.question}</h1>
+                            <div>${statusBadge}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="color: var(--color-text-dim); font-size: 0.9rem;">Total Volume</div>
+                            <div style="font-size: 1.5rem; font-weight: bold; color: var(--color-primary);">${volumeInTokens} USDC</div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 3rem;">
+                        <div style="background: rgba(0, 255, 65, 0.05); padding: 1.5rem; border: 1px solid rgba(0, 255, 65, 0.2); text-align: center;">
+                            <h3 style="color: var(--color-primary); font-size: 1.5rem; margin-bottom: 0.5rem;">YES</h3>
+                            <div style="font-size: 2.5rem; font-weight: 700; margin-bottom: 1rem;">${(yesPrice * 100).toFixed(1)}%</div>
+                            <div style="color: var(--color-text-dim); font-size: 0.9rem; margin-bottom: 1.5rem;">Pool: ${yesTokens} USDC</div>
+                            <button class="btn btn-yes" onclick="alert('Betting functionality coming soon!')" style="width: 100%; padding: 1rem;">BET YES</button>
+                        </div>
+
+                        <div style="background: rgba(255, 0, 60, 0.05); padding: 1.5rem; border: 1px solid rgba(255, 0, 60, 0.2); text-align: center;">
+                            <h3 style="color: var(--color-accent); font-size: 1.5rem; margin-bottom: 0.5rem;">NO</h3>
+                            <div style="font-size: 2.5rem; font-weight: 700; margin-bottom: 1rem;">${((1 - yesPrice) * 100).toFixed(1)}%</div>
+                            <div style="color: var(--color-text-dim); font-size: 0.9rem; margin-bottom: 1.5rem;">Pool: ${noTokens} USDC</div>
+                            <button class="btn btn-no" onclick="alert('Betting functionality coming soon!')" style="width: 100%; padding: 1rem;">BET NO</button>
+                        </div>
+                    </div>
+
+                    <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 2rem;">
+                         <h3 style="margin-bottom: 1rem;">Market Info</h3>
+                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.9rem; color: var(--color-text-dim);">
+                            <div>Creator: <span style="color: var(--color-text); font-family: monospace;">${m.creator}</span></div>
+                            <div>Address: <span style="color: var(--color-text); font-family: monospace;">${marketId}</span></div>
+                            <div>Resolver: <span style="color: var(--color-text); font-family: monospace;">${m.resolver}</span></div>
+                         </div>
+                    </div>
+                </div>
+            `;
+
+        } catch (err) {
+            console.error(err);
+            container.innerHTML = `<div class="error">Error loading market: ${err.message}</div>`;
+        }
+    };
+
+
     const renderMarkets = (data) => {
         marketGrid.innerHTML = '';
 
@@ -378,6 +468,10 @@ document.addEventListener('DOMContentLoaded', () => {
         filteredData.forEach(m => {
             const card = document.createElement('div');
             card.className = 'market-card';
+            card.style.cursor = 'pointer';
+            card.onclick = () => {
+                window.location.href = `market.html?id=${m.id}`;
+            };
 
             // Add status badge
             let statusBadge = '';
@@ -423,7 +517,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Initial Load
+    // Check if we are on the main page or details page
     if (marketGrid) {
         fetchMarkets();
+    } else if (document.getElementById('market-detail-container')) {
+        loadSingleMarket();
     }
 });
