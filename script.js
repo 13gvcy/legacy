@@ -7,14 +7,33 @@ const MARKET_CUTOFF_TIMESTAMP = 0;
 // State
 let walletAddress = null;
 let connection = null;
+let currentTab = 'all'; // 'all' or 'my'
+let allMarketsData = []; // Store fetched markets to avoid refetching on tab switch
 
 document.addEventListener('DOMContentLoaded', () => {
     const connectBtn = document.getElementById('connect-wallet');
     const marketGrid = document.getElementById('market-grid');
+    const tabBtns = document.querySelectorAll('.tab-btn');
 
     // Initialize Solana Connection
     if (window.solanaWeb3) {
         connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl('devnet'), 'confirmed');
+    }
+
+    // --- Tab Logic ---
+    if (tabBtns) {
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // remove active class from all
+                tabBtns.forEach(b => b.classList.remove('active'));
+                // add to clicked
+                btn.classList.add('active');
+                // update state
+                currentTab = btn.getAttribute('data-tab');
+                // re-render
+                renderMarkets(allMarketsData);
+            });
+        });
     }
 
     // --- Wallet Logic ---
@@ -26,6 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 walletAddress = response.publicKey.toString();
                 updateWalletUI(walletAddress);
                 sessionStorage.setItem('walletAddress', walletAddress);
+                // Re-render to update "My Markets" view if that tab is active
+                renderMarkets(allMarketsData);
             } else {
                 alert("Phantom wallet not found! Please install it.");
                 window.open("https://phantom.app/", "_blank");
@@ -51,6 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const response = await solana.connect({ onlyIfTrusted: true });
                     walletAddress = response.publicKey.toString();
                     updateWalletUI(walletAddress);
+                    // Re-render to update "My Markets" view if that tab is active
+                    renderMarkets(allMarketsData);
                 } catch (err) {
                     sessionStorage.removeItem('walletAddress');
                 }
@@ -275,12 +298,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             for (const { pubkey, account } of accounts) {
                 const market = decodeMarket(account.data);
-                
+
                 if (market && market.question) {
                     // FILTER: Only show markets created AFTER the cutoff timestamp
                     if (market.createdAt < MARKET_CUTOFF_TIMESTAMP) {
-                        console.log(`Hiding old market: "${market.question}" (created at ${market.createdAt})`);
-                        continue; // Skip this market
+                        continue;
                     }
 
                     // Calculate prices
@@ -295,23 +317,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Convert lamports to tokens (assuming 9 decimals)
                     const volumeInTokens = (total / 1e9).toFixed(2);
+                    const yesTokens = (yesPool / 1e9).toFixed(2);
+                    const noTokens = (noPool / 1e9).toFixed(2);
+
+                    // Date Formatting
+                    const createdDate = new Date(market.createdAt * 1000).toLocaleDateString();
 
                     decodedMarkets.push({
                         id: pubkey.toString(),
+                        creator: market.creator,
                         question: market.question,
                         volume: `${volumeInTokens} USDC`,
+                        yesPool: yesTokens,
+                        noPool: noTokens,
                         yesPrice: yesPrice.toFixed(2),
                         noPrice: (1 - yesPrice).toFixed(2),
                         status: market.status,
-                        createdAt: market.createdAt
+                        createdAt: market.createdAt,
+                        createdDate: createdDate
                     });
-
-                    console.log("Showing NEW market:", market.question, "Created:", market.createdAt);
                 }
             }
 
-            console.log("Total NEW markets to display:", decodedMarkets.length);
-            renderMarkets(decodedMarkets);
+            // Sort by date descending (newest first)
+            decodedMarkets.sort((a, b) => b.createdAt - a.createdAt);
+
+            // Store in state
+            allMarketsData = decodedMarkets;
+
+            // Initial render
+            renderMarkets(allMarketsData);
 
         } catch (err) {
             console.error("Error fetching markets:", err);
@@ -322,25 +357,61 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderMarkets = (data) => {
         marketGrid.innerHTML = '';
 
-        if (data.length === 0) {
-            marketGrid.innerHTML = '<div class="no-markets" style="text-align: center; padding: 2rem; color: #888;">No markets yet. <a href="create-prediction.html" style="color: var(--color-primary);">Create the first one!</a></div>';
+        // Filter based on tab
+        let filteredData = data;
+        if (currentTab === 'my') {
+            if (!walletAddress) {
+                marketGrid.innerHTML = '<div class="no-markets" style="text-align: center; padding: 2rem; color: #888;">Please <a href="#" onclick="document.getElementById(\'connect-wallet\').click(); return false;" style="color: var(--color-primary);">connect your wallet</a> to see your markets.</div>';
+                return;
+            }
+            filteredData = data.filter(m => m.creator === walletAddress);
+        }
+
+        if (filteredData.length === 0) {
+            const emptyMsg = currentTab === 'my'
+                ? 'You haven\'t created any markets yet.'
+                : 'No markets found on the blockchain.';
+            marketGrid.innerHTML = `<div class="no-markets" style="text-align: center; padding: 2rem; color: #888;">${emptyMsg} <a href="create-prediction.html" style="color: var(--color-primary);">Create one!</a></div>`;
             return;
         }
 
-        data.forEach(m => {
+        filteredData.forEach(m => {
             const card = document.createElement('div');
             card.className = 'market-card';
-            
-            // Add status badge if resolved
+
+            // Add status badge
             let statusBadge = '';
-            if (m.status === 1) statusBadge = '<span style="color: var(--color-primary); font-size: 0.8rem;">[RESOLVED: YES]</span>';
-            if (m.status === 2) statusBadge = '<span style="color: var(--color-accent); font-size: 0.8rem;">[RESOLVED: NO]</span>';
-            
+            if (m.status === 1) statusBadge = '<span style="color: var(--color-primary); font-size: 0.8rem; border: 1px solid var(--color-primary); padding: 2px 4px; border-radius: 4px;">YES WIN</span>';
+            if (m.status === 2) statusBadge = '<span style="color: var(--color-accent); font-size: 0.8rem; border: 1px solid var(--color-accent); padding: 2px 4px; border-radius: 4px;">NO WIN</span>';
+
+            // Creator badge (if "my market")
+            let creatorBadge = '';
+            if (walletAddress && m.creator === walletAddress) {
+                creatorBadge = '<span style="color: #FFD700; font-size: 0.7rem; margin-left: auto;">★ YOURS</span>';
+            }
+
             card.innerHTML = `
-                <div class="market-question">${m.question} ${statusBadge}</div>
+                <div class="market-meta" style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #666; margin-bottom: 0.5rem;">
+                    <span>${m.createdDate}</span>
+                    ${creatorBadge}
+                </div>
+                <div class="market-question" style="margin-bottom: 0.5rem;">${m.question}</div>
+                <div style="margin-bottom: 1rem;">${statusBadge}</div>
+
+                <div class="market-pools" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; font-size: 0.8rem; text-align: center;">
+                   <div style="background: rgba(0, 255, 65, 0.05); padding: 4px; border-radius: 4px;">
+                        <div style="color: var(--color-primary); opacity: 0.8;">YES POOL</div>
+                        <div>${m.yesPool}</div>
+                   </div>
+                   <div style="background: rgba(255, 0, 60, 0.05); padding: 4px; border-radius: 4px;">
+                        <div style="color: var(--color-accent); opacity: 0.8;">NO POOL</div>
+                        <div>${m.noPool}</div>
+                   </div>
+                </div>
+
                 <div class="market-stats">
-                    <span>Vol: ${m.volume}</span>
-                    <span>Chance: ${Math.round(m.yesPrice * 100)}%</span>
+                    <span>Total Vol: ${m.volume}</span>
+                    <span>Yes: ${Math.round(m.yesPrice * 100)}%</span>
                 </div>
                 <div class="market-actions">
                     <button class="btn btn-yes">YES ${m.yesPrice}</button>
