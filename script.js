@@ -1,9 +1,8 @@
 // Program Configuration
 const PROGRAM_ID = "6d5P8J92SyZFc1Cz3EHJzjySTkjzxaJDwizfQQUzXNev";
 
-// CUTOFF TIMESTAMP - Only show markets created after this time
-// Set to current time when you want a "fresh start"
-const MARKET_CUTOFF_TIMESTAMP = Math.floor(Date.now() / 1000); // Current Unix timestamp
+// CUTOFF TIMESTAMP - 0 means show all markets
+const MARKET_CUTOFF_TIMESTAMP = 0;
 
 // State
 let walletAddress = null;
