@@ -1,29 +1,5 @@
 // Program Configuration
 const PROGRAM_ID = "6d5P8J92SyZFc1Cz3EHJzjySTkjzxaJDwizfQQUzXNev";
-const IDL = {
-    "version": "0.1.0",
-    "name": "legacy_solana_program",
-    "instructions": [
-        {
-            "name": "createMarket",
-            "accounts": [
-                { "name": "market", "isMut": true, "isSigner": true },
-                { "name": "creator", "isMut": true, "isSigner": true },
-                { "name": "baseMint", "isMut": false, "isSigner": false },
-                { "name": "creatorTokenAccount", "isMut": true, "isSigner": false },
-                { "name": "escrowTokenAccount", "isMut": true, "isSigner": false },
-                { "name": "tokenProgram", "isMut": false, "isSigner": false },
-                { "name": "systemProgram", "isMut": false, "isSigner": false },
-                { "name": "rent", "isMut": false, "isSigner": false }
-            ],
-            "args": [
-                { "name": "question", "type": "string" },
-                { "name": "resolveAt", "type": "i64" },
-                { "name": "initialLiquidity", "type": "u64" }
-            ]
-        }
-    ]
-};
 
 // State
 let walletAddress = null;
@@ -112,32 +88,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // --- 1. Setup Keys ---
                 const creatorKey = new solanaWeb3.PublicKey(walletAddress);
-                const marketKeypair = solanaWeb3.Keypair.generate(); // New address for the market
+                const marketKeypair = solanaWeb3.Keypair.generate();
                 const programId = new solanaWeb3.PublicKey(PROGRAM_ID);
 
-                // Derive Escrow PDA: ['escrow', market_pubkey]
+                // Derive Escrow PDA
                 const [escrowTokenAccount] = await solanaWeb3.PublicKey.findProgramAddress(
                     [new TextEncoder().encode("escrow"), marketKeypair.publicKey.toBuffer()],
                     programId
                 );
 
-                // Derive Creator's Associated Token Account (ATA) for the Base Mint
+                // Derive Creator's ATA
                 const [creatorTokenAccount] = await solanaWeb3.PublicKey.findProgramAddress(
                     [creatorKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), BASE_MINT.toBuffer()],
                     ASSOCIATED_TOKEN_PROGRAM_ID
                 );
 
                 // --- 2. Serialize Instruction Data ---
-                // Layout: Discriminator (8) + Question (4+len) + ResolveAt (8) + InitialLiquidity (8)
-
                 const discriminatorHex = "67e261ebc8bcfbfe";
                 const discriminator = new Uint8Array(discriminatorHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
 
                 const questionBytes = new TextEncoder().encode(question);
-                const resolveAt = Math.floor(Date.now() / 1000) + 604800; // 7 days from now
-                const liquidity = new BN(liquidityInput).mul(new BN(1000000000)); // 9 decimals for SPL Token
+                const resolveAt = Math.floor(Date.now() / 1000) + 604800; // 7 days
+                const liquidity = new BN(liquidityInput).mul(new BN(1000000000)); // 9 decimals
 
-                // Build Buffer
                 const bufferSize = 8 + 4 + questionBytes.length + 8 + 8;
                 const data = new Uint8Array(bufferSize);
                 let offset = 0;
@@ -146,8 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 data.set(discriminator, offset);
                 offset += 8;
 
-                // Question String (Borsh: u32 len + bytes)
-                // We need to write u32 LE
+                // Question String (u32 len + bytes)
                 new DataView(data.buffer).setUint32(offset, questionBytes.length, true);
                 offset += 4;
                 data.set(questionBytes, offset);
@@ -162,19 +134,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Initial Liquidity (u64 LE)
                 const liquidityBuffer = new Uint8Array(liquidity.toArray('le', 8));
                 data.set(liquidityBuffer, offset);
-                offset += 8;
 
                 // --- 3. Build Instruction ---
                 const instruction = new solanaWeb3.TransactionInstruction({
                     keys: [
-                        { pubkey: marketKeypair.publicKey, isSigner: true, isWritable: true }, // market
-                        { pubkey: creatorKey, isSigner: true, isWritable: true }, // creator
-                        { pubkey: BASE_MINT, isSigner: false, isWritable: false }, // base_mint
-                        { pubkey: creatorTokenAccount, isSigner: false, isWritable: true }, // creator_token_account
-                        { pubkey: escrowTokenAccount, isSigner: false, isWritable: true }, // escrow_token_account
-                        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program
-                        { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
-                        { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false } // rent
+                        { pubkey: marketKeypair.publicKey, isSigner: true, isWritable: true },
+                        { pubkey: creatorKey, isSigner: true, isWritable: true },
+                        { pubkey: BASE_MINT, isSigner: false, isWritable: false },
+                        { pubkey: creatorTokenAccount, isSigner: false, isWritable: true },
+                        { pubkey: escrowTokenAccount, isSigner: false, isWritable: true },
+                        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+                        { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+                        { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false }
                     ],
                     programId: programId,
                     data: data
@@ -187,7 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { blockhash } = await connection.getLatestBlockhash();
                 transaction.recentBlockhash = blockhash;
 
-                // Sign with Wallet AND Market Keypair
                 transaction.partialSign(marketKeypair);
 
                 const { solana } = window;
@@ -211,92 +181,126 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Borsh Schema Definition ---
-    class MarketAccount {
-        constructor(properties) {
-            Object.assign(this, properties);
-        }
-    }
+    // --- FIXED: Manual Market Decoding ---
+    const decodeMarket = (data) => {
+        try {
+            // Skip 8-byte discriminator
+            let offset = 8;
 
-    const marketSchema = new Map([
-        [MarketAccount, {
-            kind: 'struct',
-            fields: [
-                ['creator', [32]], // PublicKey is 32 bytes
-                ['question', 'string'],
-                ['baseMint', [32]],
-                ['yesPoolAmount', 'u64'],
-                ['noPoolAmount', 'u64'],
-                ['totalYesShares', 'u64'],
-                ['totalNoShares', 'u64'],
-                ['status', 'u8'], // Enum is usually 1 byte
-                ['createdAt', 'i64'],
-                ['resolveAt', 'i64'],
-                ['resolver', [32]],
-                ['feePaid', 'u8'] // bool is u8
-            ]
-        }]
-    ]);
+            // Read creator (32 bytes)
+            const creator = new solanaWeb3.PublicKey(data.slice(offset, offset + 32));
+            offset += 32;
+
+            // Read question (String = u32 length + bytes)
+            const questionLen = new DataView(data.buffer, data.byteOffset + offset).getUint32(0, true);
+            offset += 4;
+            const questionBytes = data.slice(offset, offset + questionLen);
+            const question = new TextDecoder().decode(questionBytes);
+            offset += questionLen;
+
+            // Read base_mint (32 bytes)
+            const baseMint = new solanaWeb3.PublicKey(data.slice(offset, offset + 32));
+            offset += 32;
+
+            // Read yes_pool_amount (u64, 8 bytes)
+            const yesPoolAmount = new BN(data.slice(offset, offset + 8), 'le');
+            offset += 8;
+
+            // Read no_pool_amount (u64, 8 bytes)
+            const noPoolAmount = new BN(data.slice(offset, offset + 8), 'le');
+            offset += 8;
+
+            // Read total_yes_shares (u64, 8 bytes)
+            const totalYesShares = new BN(data.slice(offset, offset + 8), 'le');
+            offset += 8;
+
+            // Read total_no_shares (u64, 8 bytes)
+            const totalNoShares = new BN(data.slice(offset, offset + 8), 'le');
+            offset += 8;
+
+            // Read status (u8, 1 byte) - enum discriminant
+            const status = data[offset];
+            offset += 1;
+
+            // Read created_at (i64, 8 bytes)
+            const createdAt = new BN(data.slice(offset, offset + 8), 'le');
+            offset += 8;
+
+            // Read resolve_at (i64, 8 bytes)
+            const resolveAt = new BN(data.slice(offset, offset + 8), 'le');
+            offset += 8;
+
+            // Read resolver (32 bytes)
+            const resolver = new solanaWeb3.PublicKey(data.slice(offset, offset + 32));
+            offset += 32;
+
+            // Read fee_paid (bool = u8, 1 byte)
+            const feePaid = data[offset] === 1;
+
+            return {
+                creator: creator.toString(),
+                question,
+                baseMint: baseMint.toString(),
+                yesPoolAmount,
+                noPoolAmount,
+                totalYesShares,
+                totalNoShares,
+                status,
+                createdAt,
+                resolveAt,
+                resolver: resolver.toString(),
+                feePaid
+            };
+        } catch (e) {
+            console.error("Failed to decode market:", e);
+            return null;
+        }
+    };
 
     // --- Fetch and Render Markets ---
     const fetchMarkets = async () => {
         if (!connection || !marketGrid) return;
 
         try {
-            // Clear hardcoded/loading state
             marketGrid.innerHTML = '<div class="loading-spinner">Loading Markets from Solana...</div>';
 
             console.log("Fetching accounts for program:", PROGRAM_ID);
             const accounts = await connection.getProgramAccounts(new solanaWeb3.PublicKey(PROGRAM_ID));
             console.log("Found accounts:", accounts.length);
 
-            // Filter for Market accounts (check discriminator if strictly needed, but for now assume all are markets)
-            // Anchor discriminator for "Market" is sha256("account:Market")[..8]
-            // For simplicity in this MVP, we'll try to decode everything.
-
             const decodedMarkets = [];
 
             for (const { pubkey, account } of accounts) {
-                try {
-                    console.log("Processing account:", pubkey.toString(), "Data len:", account.data.length);
-                    // Skip 8 byte discriminator
-                    const data = account.data.slice(8);
-
-                    // Deserialize
-                    const market = borsh.deserialize(marketSchema, MarketAccount, data);
-                    console.log("Decoded market:", market);
-
-                    // Calculate Prices
-                    const yesPool = new BN(market.yesPoolAmount, 'le'); // Borsh uses BN.js or similar usually, but here we might get raw bytes/arrays depending on library version
-                    // Simple approximation for MVP if numbers are small, else need BN library
-                    // Let's assume simple numbers for the demo or use a helper
-
-                    // Note: 'u64' in borsh-js usually returns a BN (BigNum) instance or similar.
-                    // We'll convert to string/number for display.
-
-                    const yes = parseInt(market.yesPoolAmount.toString());
-                    const no = parseInt(market.noPoolAmount.toString());
-                    const total = yes + no;
+                const market = decodeMarket(account.data);
+                
+                if (market && market.question) {
+                    // Calculate prices
+                    const yesPool = market.yesPoolAmount.toNumber();
+                    const noPool = market.noPoolAmount.toNumber();
+                    const total = yesPool + noPool;
 
                     let yesPrice = 0.5;
                     if (total > 0) {
-                        yesPrice = yes / total;
+                        yesPrice = yesPool / total;
                     }
+
+                    // Convert lamports to tokens (assuming 9 decimals)
+                    const volumeInTokens = (total / 1e9).toFixed(2);
 
                     decodedMarkets.push({
                         id: pubkey.toString(),
                         question: market.question,
-                        volume: "Wait...", // Need to fetch token balances for real volume
+                        volume: `${volumeInTokens} USDC`,
                         yesPrice: yesPrice.toFixed(2),
-                        noPrice: (1 - yesPrice).toFixed(2)
+                        noPrice: (1 - yesPrice).toFixed(2),
+                        status: market.status
                     });
 
-                } catch (e) {
-                    console.log("Failed to decode account:", pubkey.toString(), e);
+                    console.log("Decoded market:", market.question, "Yes:", yesPrice);
                 }
             }
 
-            console.log("Final decoded markets:", decodedMarkets);
+            console.log("Total decoded markets:", decodedMarkets.length);
             renderMarkets(decodedMarkets);
 
         } catch (err) {
@@ -309,22 +313,36 @@ document.addEventListener('DOMContentLoaded', () => {
         marketGrid.innerHTML = '';
 
         if (data.length === 0) {
-            marketGrid.innerHTML = '<div class="no-markets">No markets found. Create one!</div>';
+            marketGrid.innerHTML = '<div class="no-markets" style="text-align: center; padding: 2rem; color: #888;">No markets found. <a href="create-prediction.html" style="color: var(--color-primary);">Create one!</a></div>';
             return;
         }
 
         data.forEach(m => {
             const card = document.createElement('div');
             card.className = 'market-card';
+            
+            // Add status badge if resolved
+            let statusBadge = '';
+            if (m.status === 1) statusBadge = '<span style="color: var(--color-primary); font-size: 0.8rem;">[RESOLVED: YES]</span>';
+            if (m.status === 2) statusBadge = '<span style="color: var(--color-accent); font-size: 0.8rem;">[RESOLVED: NO]</span>';
+            
             card.innerHTML = `
-                <div class="market-question">${m.question}</div>
-                <div class="market-stats"><span>Vol: ${m.volume}</span><span>Chance: ${Math.round(m.yesPrice * 100)}%</span></div>
-                <div class="market-actions"><button class="btn btn-yes">YES ${m.yesPrice}</button><button class="btn btn-no">NO ${m.noPrice}</button></div>
+                <div class="market-question">${m.question} ${statusBadge}</div>
+                <div class="market-stats">
+                    <span>Vol: ${m.volume}</span>
+                    <span>Chance: ${Math.round(m.yesPrice * 100)}%</span>
+                </div>
+                <div class="market-actions">
+                    <button class="btn btn-yes">YES ${m.yesPrice}</button>
+                    <button class="btn btn-no">NO ${m.noPrice}</button>
+                </div>
             `;
             marketGrid.appendChild(card);
         });
     };
 
     // Initial Load
-    fetchMarkets();
+    if (marketGrid) {
+        fetchMarkets();
+    }
 });
