@@ -1,6 +1,10 @@
 // Program Configuration
 const PROGRAM_ID = "6d5P8J92SyZFc1Cz3EHJzjySTkjzxaJDwizfQQUzXNev";
 
+// CUTOFF TIMESTAMP - Only show markets created after this time
+// Set to current time when you want a "fresh start"
+const MARKET_CUTOFF_TIMESTAMP = Math.floor(Date.now() / 1000); // Current Unix timestamp
+
 // State
 let walletAddress = null;
 let connection = null;
@@ -246,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 totalYesShares,
                 totalNoShares,
                 status,
-                createdAt,
+                createdAt: createdAt.toNumber(),
                 resolveAt,
                 resolver: resolver.toString(),
                 feePaid
@@ -266,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             console.log("Fetching accounts for program:", PROGRAM_ID);
             const accounts = await connection.getProgramAccounts(new solanaWeb3.PublicKey(PROGRAM_ID));
-            console.log("Found accounts:", accounts.length);
+            console.log("Found total accounts:", accounts.length);
 
             const decodedMarkets = [];
 
@@ -274,6 +278,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const market = decodeMarket(account.data);
                 
                 if (market && market.question) {
+                    // FILTER: Only show markets created AFTER the cutoff timestamp
+                    if (market.createdAt < MARKET_CUTOFF_TIMESTAMP) {
+                        console.log(`Hiding old market: "${market.question}" (created at ${market.createdAt})`);
+                        continue; // Skip this market
+                    }
+
                     // Calculate prices
                     const yesPool = market.yesPoolAmount.toNumber();
                     const noPool = market.noPoolAmount.toNumber();
@@ -293,14 +303,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         volume: `${volumeInTokens} USDC`,
                         yesPrice: yesPrice.toFixed(2),
                         noPrice: (1 - yesPrice).toFixed(2),
-                        status: market.status
+                        status: market.status,
+                        createdAt: market.createdAt
                     });
 
-                    console.log("Decoded market:", market.question, "Yes:", yesPrice);
+                    console.log("Showing NEW market:", market.question, "Created:", market.createdAt);
                 }
             }
 
-            console.log("Total decoded markets:", decodedMarkets.length);
+            console.log("Total NEW markets to display:", decodedMarkets.length);
             renderMarkets(decodedMarkets);
 
         } catch (err) {
@@ -313,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
         marketGrid.innerHTML = '';
 
         if (data.length === 0) {
-            marketGrid.innerHTML = '<div class="no-markets" style="text-align: center; padding: 2rem; color: #888;">No markets found. <a href="create-prediction.html" style="color: var(--color-primary);">Create one!</a></div>';
+            marketGrid.innerHTML = '<div class="no-markets" style="text-align: center; padding: 2rem; color: #888;">No markets yet. <a href="create-prediction.html" style="color: var(--color-primary);">Create the first one!</a></div>';
             return;
         }
 
