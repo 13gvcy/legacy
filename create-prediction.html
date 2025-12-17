@@ -17,19 +17,14 @@
     <div class="noise-overlay"></div>
 
     <div class="bg-elements">
-        <!-- Bitcoin -->
         <svg class="bg-icon icon-btc" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
             <path
                 d="M23.175 16.325c1.113-0.742 1.808-1.925 1.808-3.275 0-2.433-1.975-4.408-4.408-4.408h-6.575v15.358h7.458c2.433 0 4.408-1.975 4.408-4.408 0-1.508-0.85-2.825-2.125-3.608zM18.5 11.642h2.075c0.783 0 1.408 0.625 1.408 1.408s-0.625 1.408-1.408 1.408h-2.075v-2.817zM19.383 21.042h-2.958v-3.042h2.958c0.842 0 1.525 0.683 1.525 1.525s-0.683 1.525-1.525 1.525z"
                 fill="currentColor" />
         </svg>
-
-        <!-- Ethereum -->
         <svg class="bg-icon icon-eth" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
             <path d="M16 2l-10 16.667 10 5.833 10-5.833zM16 30l10-14.167-10 5.833-10-5.833z" fill="currentColor" />
         </svg>
-
-        <!-- Solana-ish / Abstract -->
         <svg class="bg-icon icon-sol" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
             <path d="M4 8l4-4h20l-4 4h-20zM28 16l-4 4h-20l4-4h20zM4 24l4-4h20l-4 4h-20z" fill="currentColor" />
         </svg>
@@ -43,8 +38,8 @@
             </a>
         </div>
         <div class="nav-links">
-            <a href="create-prediction.html" class="nav-link active">CREATE PREDICTION</a>
-            <a href="#" class="nav-link">LEADERBOARDS</a>
+            <a href="index.html" class="nav-link">MARKETS</a>
+            <a href="create-prediction.html" class="nav-link active">CREATE</a>
         </div>
         <button id="connect-wallet" class="btn btn-primary">
             CONNECT WALLET
@@ -65,33 +60,45 @@
 
             <form id="create-market-form" class="create-form">
                 <div class="form-group">
-                    <label for="question">QUESTION</label>
-                    <input type="text" id="question" placeholder="e.g. Will Bitcoin hit $100k?" required>
+                    <label for="question">PREDICTION QUESTION</label>
+                    <input type="text" id="question" placeholder="e.g. Will Bitcoin reach $150k by 2025?" required>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label for="category">CATEGORY</label>
                         <select id="category">
-                            <option value="crypto">CRYPTO</option>
-                            <option value="tech">TECH</option>
-                            <option value="politics">POLITICS</option>
-                            <option value="sports">SPORTS</option>
+                            <option value="crypto">🪙 CRYPTO</option>
+                            <option value="tech">💻 TECHNOLOGY</option>
+                            <option value="politics">🏛️ POLITICS</option>
+                            <option value="sports">⚽ SPORTS</option>
+                            <option value="entertainment">🎬 ENTERTAINMENT</option>
+                            <option value="other">📌 OTHER</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="end-date">END DATE</label>
+                        <label for="end-date">RESOLUTION DATE</label>
                         <input type="date" id="end-date" required>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="liquidity">INITIAL LIQUIDITY (USDC)</label>
-                    <input type="number" id="liquidity" placeholder="1000" min="100" required>
+                    <label for="liquidity">INITIAL LIQUIDITY</label>
+                    <div class="currency-input-group">
+                        <input type="number" id="liquidity" placeholder="50" min="1" required>
+                        <select id="currency" class="currency-select">
+                            <option value="usdc">USDC</option>
+                            <option value="sol">◎ SOL</option>
+                        </select>
+                    </div>
+                    <p style="font-size: 0.75rem; color: var(--color-text-dim); margin-top: 0.5rem;">
+                        Split evenly between YES and NO pools. Higher liquidity = better odds for traders.
+                    </p>
                 </div>
 
-                <button type="submit" class="btn btn-primary btn-block" style="width: 100%; margin-top: 1rem;">LAUNCH
-                    MARKET</button>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem; padding: 1rem;">
+                    🚀 LAUNCH MARKET
+                </button>
             </form>
         </section>
     </main>
@@ -100,9 +107,8 @@
         <p>&copy; 2025 LEGACY MARKETS. DECENTRALIZED & UNCENSORED.</p>
     </footer>
 
-    <!-- Solana Web3.js & Borsh -->
+    <!-- Solana Web3.js & BN -->
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
-    <script src="https://unpkg.com/borsh@latest/lib/index.js"></script>
     <script src="https://unpkg.com/bn.js@latest/lib/bn.js"></script>
     <script src="script.js"></script>
 </body>

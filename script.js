@@ -451,7 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let filteredData = data;
         if (currentTab === 'my') {
             if (!walletAddress) {
-                marketGrid.innerHTML = '<div class="no-markets" style="text-align: center; padding: 2rem; color: #888;">Please <a href="#" onclick="document.getElementById(\'connect-wallet\').click(); return false;" style="color: var(--color-primary);">connect your wallet</a> to see your markets.</div>';
+                marketGrid.innerHTML = '<div class="no-markets">Please <a href="#" onclick="document.getElementById(\'connect-wallet\').click(); return false;">connect your wallet</a> to see your markets.</div>';
                 return;
             }
             filteredData = data.filter(m => m.creator === walletAddress);
@@ -461,7 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const emptyMsg = currentTab === 'my'
                 ? 'You haven\'t created any markets yet.'
                 : 'No markets found on the blockchain.';
-            marketGrid.innerHTML = `<div class="no-markets" style="text-align: center; padding: 2rem; color: #888;">${emptyMsg} <a href="create-prediction.html" style="color: var(--color-primary);">Create one!</a></div>`;
+            marketGrid.innerHTML = `<div class="no-markets">${emptyMsg} <a href="create-prediction.html">Create one!</a></div>`;
             return;
         }
 
@@ -473,43 +473,67 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = `market.html?id=${m.id}`;
             };
 
-            // Add status badge
-            let statusBadge = '';
-            if (m.status === 1) statusBadge = '<span style="color: var(--color-primary); font-size: 0.8rem; border: 1px solid var(--color-primary); padding: 2px 4px; border-radius: 4px;">YES WIN</span>';
-            if (m.status === 2) statusBadge = '<span style="color: var(--color-accent); font-size: 0.8rem; border: 1px solid var(--color-accent); padding: 2px 4px; border-radius: 4px;">NO WIN</span>';
+            // Generate mini chart bars (simulated historical data based on current price)
+            const yesPercent = parseFloat(m.yesPrice) * 100;
+            const chartBars = [];
+            for (let i = 0; i < 20; i++) {
+                // Create variation around current price for visual interest
+                const variation = (Math.sin(i * 0.5) * 15) + (Math.random() * 10 - 5);
+                const height = Math.max(10, Math.min(100, yesPercent + variation - 20));
+                chartBars.push(`<div class="chart-bar" style="height: ${height}%"></div>`);
+            }
 
-            // Creator badge (if "my market")
+            // Status badge
+            let statusBadge = '';
+            if (m.status === 0) {
+                statusBadge = '<span class="status-badge status-open">● LIVE</span>';
+            } else if (m.status === 1) {
+                statusBadge = '<span class="status-badge status-yes">✓ YES WON</span>';
+            } else if (m.status === 2) {
+                statusBadge = '<span class="status-badge status-no">✗ NO WON</span>';
+            }
+
+            // Creator badge
             let creatorBadge = '';
             if (walletAddress && m.creator === walletAddress) {
-                creatorBadge = '<span style="color: #FFD700; font-size: 0.7rem; margin-left: auto;">★ YOURS</span>';
+                creatorBadge = '<span class="yours-badge">★ YOURS</span>';
             }
 
             card.innerHTML = `
-                <div class="market-meta" style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #666; margin-bottom: 0.5rem;">
+                <div class="market-meta">
                     <span>${m.createdDate}</span>
                     ${creatorBadge}
                 </div>
-                <div class="market-question" style="margin-bottom: 0.5rem;">${m.question}</div>
+                
+                <div class="market-question">${m.question}</div>
+                
                 <div style="margin-bottom: 1rem;">${statusBadge}</div>
 
-                <div class="market-pools" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; font-size: 0.8rem; text-align: center;">
-                   <div style="background: rgba(0, 255, 65, 0.05); padding: 4px; border-radius: 4px;">
-                        <div style="color: var(--color-primary); opacity: 0.8;">YES POOL</div>
-                        <div>${m.yesPool}</div>
-                   </div>
-                   <div style="background: rgba(255, 0, 60, 0.05); padding: 4px; border-radius: 4px;">
-                        <div style="color: var(--color-accent); opacity: 0.8;">NO POOL</div>
-                        <div>${m.noPool}</div>
-                   </div>
+                <div class="mini-chart">
+                    ${chartBars.join('')}
+                </div>
+
+                <div class="probability-display">
+                    <div class="prob-yes">
+                        <div class="prob-label">Yes</div>
+                        <div class="prob-value">${Math.round(m.yesPrice * 100)}%</div>
+                        <div class="prob-pool">${m.yesPool} USDC</div>
+                    </div>
+                    <div class="prob-no">
+                        <div class="prob-label">No</div>
+                        <div class="prob-value">${Math.round(m.noPrice * 100)}%</div>
+                        <div class="prob-pool">${m.noPool} USDC</div>
+                    </div>
                 </div>
 
                 <div class="market-stats">
-                    <span>Total Vol: ${m.volume}</span>
-                    <span>Yes: ${Math.round(m.yesPrice * 100)}%</span>
+                    <span>📊 Vol: ${m.volume}</span>
+                    <span>👥 Active</span>
                 </div>
+
                 <div class="market-actions">
-                    <button class="btn btn-yes">YES ${m.yesPrice}</button>
-                    <button class="btn btn-no">NO ${m.noPrice}</button>
+                    <button class="btn btn-yes" onclick="event.stopPropagation();">BUY YES</button>
+                    <button class="btn btn-no" onclick="event.stopPropagation();">BUY NO</button>
                 </div>
             `;
             marketGrid.appendChild(card);

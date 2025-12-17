@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta name="devfun-verification">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEGACY | Prediction Market</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Inter:wght@400;600&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="noise-overlay"></div>
+
+    <div class="bg-elements">
+        <!-- Bitcoin -->
+        <svg class="bg-icon icon-btc" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+            <path
+                d="M23.175 16.325c1.113-0.742 1.808-1.925 1.808-3.275 0-2.433-1.975-4.408-4.408-4.408h-6.575v15.358h7.458c2.433 0 4.408-1.975 4.408-4.408 0-1.508-0.85-2.825-2.125-3.608zM18.5 11.642h2.075c0.783 0 1.408 0.625 1.408 1.408s-0.625 1.408-1.408 1.408h-2.075v-2.817zM19.383 21.042h-2.958v-3.042h2.958c0.842 0 1.525 0.683 1.525 1.525s-0.683 1.525-1.525 1.525z"
+                fill="currentColor" />
+        </svg>
+
+        <!-- Ethereum -->
+        <svg class="bg-icon icon-eth" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 2l-10 16.667 10 5.833 10-5.833zM16 30l10-14.167-10 5.833-10-5.833z" fill="currentColor" />
+        </svg>
+
+        <!-- Solana-ish / Abstract -->
+        <svg class="bg-icon icon-sol" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 8l4-4h20l-4 4h-20zM28 16l-4 4h-20l4-4h20zM4 24l4-4h20l-4 4h-20z" fill="currentColor" />
+        </svg>
+    </div>
+
+    <nav class="navbar">
+        <div class="logo">
+            <a href="index.html"
+                style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 0.75rem;">
+                <img src="assets/logo.jpg" alt="LEGACY Logo" class="logo-img"> LEGACY
+            </a>
+        </div>
+        <div class="nav-links">
+            <a href="create-prediction.html" class="nav-link">CREATE PREDICTION</a>
+            <a href="#" class="nav-link">LEADERBOARDS</a>
+        </div>
+        <button id="connect-wallet" class="btn btn-primary">
+            CONNECT WALLET
+        </button>
+    </nav>
+
+    <main>
+        <section class="hero">
+            <h1 class="glitch" data-text="PREDICT THE FUTURE">PREDICT THE FUTURE</h1>
+            <p class="hero-sub">THE STREETS NEVER LIE. BET ON REALITY.</p>
+        </section>
+
+        <section class="markets-container">
+            <div class="section-header">
+                <h2>TRENDING MARKETS</h2>
+                <div class="line-decoration"></div>
+            </div>
+
+            <div class="market-grid" id="market-grid">
+                <!-- Market cards will be injected here -->
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 LEGACY MARKETS. DECENTRALIZED & UNCENSORED.</p>
+    </footer>
+
+    <!-- Solana Web3.js, Borsh, & BS58 -->
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <script src="https://unpkg.com/borsh@latest/lib/index.js"></script>
+    <script src="https://unpkg.com/bn.js@latest/lib/bn.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

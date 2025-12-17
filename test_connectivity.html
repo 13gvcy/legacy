@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Connectivity Test</title>
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <script src="https://unpkg.com/bn.js@latest/lib/bn.js"></script>
+</head>
+
+<body>
+    <h1>Solana Connectivity & Manual Parsing Test</h1>
+    <div id="status">Initializing...</div>
+    <div id="output"></div>
+
+    <script>
+        const PROGRAM_ID = "6d5P8J92SyZFc1Cz3EHJzjySTkjzxaJDwizfQQUzXNev";
+
+        function parseMarket(data) {
+            let offset = 0;
+            // Ensure we are working with a Uint8Array
+            const bytes = new Uint8Array(data);
+            const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+
+            // Helper to read PublicKey
+            const readPubkey = () => {
+                const pkBytes = bytes.slice(offset, offset + 32);
+                offset += 32;
+                return new solanaWeb3.PublicKey(pkBytes).toString();
+            };
+
+            // Helper to read String
+            const readString = () => {
+                const len = view.getUint32(offset, true);
+                offset += 4;
+                const strBytes = bytes.slice(offset, offset + len);
+                offset += len;
+                return new TextDecoder().decode(strBytes);
+            };
+
+            // Helper to read u64 (as string)
+            const readU64 = () => {
+                // Low, High (Little Endian)
+                const low = view.getUint32(offset, true);
+                const high = view.getUint32(offset + 4, true);
+                offset += 8;
+                // Simple string representation for now
+                return new BN(low).add(new BN(high).mul(new BN(0x100000000))).toString();
+            };
+
+            // Helper to read i64
+            const readI64 = () => {
+                const low = view.getUint32(offset, true);
+                const high = view.getUint32(offset + 4, true);
+                offset += 8;
+                return new BN(low).add(new BN(high).mul(new BN(0x100000000))).toString();
+            };
+
+            const creator = readPubkey();
+            const question = readString();
+            const baseMint = readPubkey();
+            const yesPoolAmount = readU64();
+            const noPoolAmount = readU64();
+            const totalYesShares = readU64();
+            const totalNoShares = readU64();
+            const status = view.getUint8(offset); offset += 1;
+            const createdAt = readI64();
+            const resolveAt = readI64();
+            const resolver = readPubkey();
+            const feePaid = view.getUint8(offset) !== 0; offset += 1;
+
+            return { creator, question, baseMint, yesPoolAmount, noPoolAmount, status, resolveAt };
+        }
+
+        async function runTest() {
+            const statusDiv = document.getElementById('status');
+            const outputDiv = document.getElementById('output');
+
+            try {
+                statusDiv.innerText = "Connecting to Devnet...";
+                const connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl('devnet'), 'confirmed');
+
+                statusDiv.innerText = "Fetching Program Accounts...";
+                const pubkey = new solanaWeb3.PublicKey(PROGRAM_ID);
+                const accounts = await connection.getProgramAccounts(pubkey);
+
+                statusDiv.innerText = "Parsing...";
+                let html = `<h3>Found ${accounts.length} accounts on Program ${PROGRAM_ID}</h3><ul>`;
+
+                for (const { pubkey, account } of accounts) {
+                    try {
+                        const rawData = new Uint8Array(account.data);
+                        const discriminator = Array.from(rawData.slice(0, 8)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+                        // Expected: dbbed53700e3c69a
+                        const isMarket = discriminator === 'dbbed53700e3c69a';
+                        const color = isMarket ? 'green' : 'orange';
+                        const statusText = isMarket ? 'VALID MARKET' : 'UNKNOWN ACCOUNT';
+
+                        // Only try to parse if it looks like a market (or try anyway for debugging)
+                        let marketInfo = "N/A";
+                        if (isMarket) {
+                            const data = rawData.slice(8); // Skip discriminator
+                            const market = parseMarket(data);
+                            marketInfo = `
+                                Question: <b>${market.question}</b><br>
+                                Status: ${market.status}<br>
+                                Yes Pool: ${market.yesPoolAmount}<br>
+                                No Pool: ${market.noPoolAmount}
+                            `;
+                        }
+
+                        html += `<li>
+                            <strong style="color:${color}">${statusText}</strong>: ${pubkey.toString()} <small>(Disc: ${discriminator})</small><br>
+                            ${marketInfo}
+                        </li>`;
+                    } catch (e) {
+                        html += `<li style="color:red">Failed to decode ${pubkey.toString()}: ${e.message}</li>`;
+                        console.error(e);
+                    }
+                }
+                html += "</ul>";
+
+                statusDiv.innerText = "Success!";
+                outputDiv.innerHTML = html;
+
+            } catch (err) {
+                statusDiv.innerText = "Failed";
+                outputDiv.innerText = err.toString();
+                console.error(err);
+            }
+        }
+
+        window.onload = runTest;
+    </script>
+</body>
+
+</html>

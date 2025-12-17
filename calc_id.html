@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <script src="https://unpkg.com/bs58@latest/index.js"></script>
+    <script>
+        setTimeout(() => {
+            const hex = "db1f8438d6160872";
+            const bytes = new Uint8Array(hex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+            const encoded = bs58.encode(bytes);
+            document.body.innerText = "DISCRIMINATOR: " + encoded;
+            console.log("DISCRIMINATOR: " + encoded);
+        }, 1000);
+    </script>
+</body>
+</html>
