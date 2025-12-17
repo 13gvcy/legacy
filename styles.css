@@ -548,6 +548,185 @@ footer {
     margin-top: var(--spacing-xl);
 }
 
+/* Profile Page Styles */
+.profile-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+}
+
+.profile-stat-card {
+    background: linear-gradient(145deg, var(--color-surface-elevated), var(--color-surface));
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-lg);
+    transition: all 0.3s ease;
+}
+
+.profile-stat-card:hover {
+    border-color: rgba(0, 255, 65, 0.2);
+    box-shadow: 0 0 30px rgba(0, 255, 65, 0.05);
+    transform: translateY(-4px);
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--color-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: var(--spacing-sm);
+    font-family: var(--font-heading);
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: var(--font-heading);
+    color: var(--color-text);
+    margin-bottom: var(--spacing-xs);
+}
+
+.stat-value.positive {
+    color: var(--color-primary);
+}
+
+.stat-value.negative {
+    color: var(--color-accent);
+}
+
+.stat-change {
+    font-size: 0.85rem;
+    color: var(--color-text-dim);
+}
+
+.profile-section {
+    margin-bottom: var(--spacing-xl);
+}
+
+.profile-section-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+}
+
+.profile-section-header h2 {
+    font-size: 0.9rem;
+    letter-spacing: 3px;
+    color: var(--color-text-dim);
+    text-transform: uppercase;
+}
+
+.trades-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.trade-item {
+    background: linear-gradient(145deg, var(--color-surface-elevated), var(--color-surface));
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: var(--spacing-md);
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.trade-item:hover {
+    border-color: rgba(0, 255, 65, 0.2);
+    transform: translateX(4px);
+}
+
+.trade-question {
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.trade-outcome {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: 0.8rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.trade-outcome.win {
+    background: var(--color-primary-glow);
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+}
+
+.trade-outcome.loss {
+    background: var(--color-accent-glow);
+    color: var(--color-accent);
+    border: 1px solid var(--color-accent);
+}
+
+.trade-outcome.pending {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--color-text-dim);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.trade-amount {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    text-align: right;
+}
+
+.trade-amount.positive {
+    color: var(--color-primary);
+}
+
+.trade-amount.negative {
+    color: var(--color-accent);
+}
+
+.trade-date {
+    font-size: 0.75rem;
+    color: var(--color-text-dim);
+    text-align: right;
+}
+
+.wallet-info {
+    background: linear-gradient(145deg, var(--color-surface-elevated), var(--color-surface));
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+}
+
+.wallet-address {
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: var(--color-text-dim);
+    word-break: break-all;
+    margin-top: var(--spacing-sm);
+}
+
+.empty-state {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--color-text-dim);
+}
+
+.empty-state a {
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.empty-state a:hover {
+    text-shadow: 0 0 10px var(--color-primary-glow);
+}
+
 /* Glitch Effect */
 .glitch {
     position: relative;
@@ -726,5 +905,18 @@ input::placeholder {
 
     .form-row {
         grid-template-columns: 1fr;
+    }
+
+    .profile-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .trade-item {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-sm);
+    }
+
+    .trade-item > div {
+        text-align: left !important;
     }
 }
